@@ -1,131 +1,86 @@
-import { Form, Button } from "react-bootstrap";
-import { useState } from "react";
-import axios from "axios";
-import { useNavigate } from "react-router-dom";
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const bodyParser = require('body-parser');
+const cookieParser = require('cookie-parser');
+const connectDB = require('./src/config/db');
+const fitnessroutes = require('./src/routes/fitnessroutes');
 
-// ✅ Use backend URL from environment and remove trailing slash
-const API_BASE = import.meta.env.VITE_SERVER_URL?.replace(/\/+$/, "");
+const app = express();
 
-function AdminSignup() {
-  const [adminData, setAdminData] = useState({
-    username: "",
-    email: "",
-    password: "",
-    usertype: "admin",
-    createdBy: "system",
-    updatedBy: "system",
-  });
+/**
+ * ✅ Allowed origins
+ * Use environment variable if available, fallback to safe defaults
+ */
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+  : [
+      "https://fitnessjasna.vercel.app", // production frontend
+      "http://localhost:5173",            // local dev
+    ];
 
-  const [message, setMessage] = useState("");
-  const [isError, setIsError] = useState(false);
-  const navigate = useNavigate();
-
-  const handleAdminSignup = async (event) => {
-    event.preventDefault();
-    console.log("Admin Data:", adminData);
-
-    try {
-      const response = await axios.post(
-        `${API_BASE}/myfitness/admin/signup`, // ✅ no double slash
-        adminData,
-        {
-          withCredentials: true, // ✅ send cookies/session
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (response.status === 200 || response.status === 201) {
-        setMessage("Admin registered successfully!");
-        setIsError(false);
-
-        setTimeout(() => {
-          navigate("/AdminDashboard");
-        }, 2000);
-      }
-    } catch (error) {
-      console.error("❌ Signup error:", error);
-
-      if (error.response?.status === 400) {
-        setMessage(
-          error.response.data.error ||
-            "Username already exists. Choose a different one."
-        );
-      } else {
-        setMessage("An error occurred during signup.");
-      }
-      setIsError(true);
+/**
+ * ✅ CORS configuration
+ */
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.error('❌ Blocked by CORS:', origin);
+      callback(new Error('Not allowed by CORS'));
     }
-  };
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 200, // for legacy browsers
+};
 
-  return (
-    <Form onSubmit={handleAdminSignup}>
-      <h3 style={{ textAlign: "center", marginBottom: "20px", marginTop: "20px" }}>
-        Admin Signup
-      </h3>
+// ✅ Apply CORS before all middleware/routes
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Handle preflight requests
 
-      <Form.Group className="mb-3" style={{ margin: "0 10px" }}>
-        <Form.Label>Username</Form.Label>
-        <Form.Control
-          type="text"
-          placeholder="Enter username"
-          value={adminData.username}
-          onChange={(e) =>
-            setAdminData({ ...adminData, username: e.target.value })
-          }
-          required
-        />
-      </Form.Group>
+/**
+ * ✅ Middleware
+ */
+app.use(bodyParser.json());
+app.use(cookieParser());
 
-      <Form.Group className="mb-3" style={{ margin: "0 10px" }}>
-        <Form.Label>Email</Form.Label>
-        <Form.Control
-          type="email"
-          placeholder="Enter email"
-          value={adminData.email}
-          onChange={(e) => setAdminData({ ...adminData, email: e.target.value })}
-          required
-        />
-      </Form.Group>
+/**
+ * ✅ Routes
+ */
+app.get('/', (req, res) => {
+  res.send('Welcome to Happy Fitness API 🚀');
+});
 
-      <Form.Group className="mb-3" style={{ margin: "0 10px" }}>
-        <Form.Label>Password</Form.Label>
-        <Form.Control
-          type="password"
-          placeholder="Enter password"
-          value={adminData.password}
-          onChange={(e) =>
-            setAdminData({ ...adminData, password: e.target.value })
-          }
-          required
-        />
-      </Form.Group>
+// Connect MongoDB
+connectDB();
 
-      <Form.Group className="mb-3" style={{ margin: "0 10px" }}>
-        <Form.Label>Usertype</Form.Label>
-        <Form.Control placeholder="Admin" disabled />
-      </Form.Group>
+// Use fitness routes
+app.use('/myfitness', fitnessroutes);
 
-      <div style={{ margin: "0 10px" }}>
-        <Button variant="primary" type="submit">
-          Signup
-        </Button>
-      </div>
+/**
+ * ✅ Global error handler
+ */
+app.use((err, req, res, next) => {
+  console.error('🔥 Unhandled Express error:', err);
+  res.status(500).json({
+    message: 'Internal Server Error',
+    error: err.message || 'Unknown error',
+  });
+});
 
-      {message && (
-        <p
-          style={{
-            textAlign: "center",
-            color: isError ? "red" : "green",
-            marginTop: "10px",
-          }}
-        >
-          {message}
-        </p>
-      )}
-    </Form>
-  );
+/**
+ * ✅ Local development
+ * Do not use app.listen on Vercel
+ */
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running locally on http://localhost:${PORT}`);
+  });
 }
 
-export default AdminSignup;
+// ✅ Export app for Vercel
+module.exports = app;
