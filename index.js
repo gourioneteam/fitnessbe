@@ -9,19 +9,22 @@ const fitnessroutes = require('./src/routes/fitnessroutes');
 const app = express();
 
 /**
- * ✅ Allowed origins from .env
- * Example in .env:
- * ALLOWED_ORIGINS=https://fitnessjasna.vercel.app,http://localhost:5173
+ * ✅ Allowed origins
+ * Use env if available, otherwise fallback to hardcoded list.
  */
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
-  : [];
+  : [
+      "https://fitnessjasna.vercel.app", // production frontend
+      "http://localhost:5173"            // local dev
+    ];
 
 /**
  * ✅ CORS configuration
  */
 const corsOptions = {
   origin: function (origin, callback) {
+    // allow non-browser requests (like Postman) which have no origin
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -32,10 +35,10 @@ const corsOptions = {
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  optionsSuccessStatus: 200, // avoid issues with some browsers
+  optionsSuccessStatus: 200,
 };
 
-// ✅ Apply CORS before all routes/middleware
+// ✅ Apply CORS before middleware/routes
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
@@ -68,8 +71,7 @@ app.use((err, req, res, next) => {
 });
 
 /**
- * ✅ Run locally with app.listen
- * 🚀 On Vercel, just export app (no listen)
+ * ✅ Local dev only
  */
 if (process.env.NODE_ENV !== 'production') {
   const PORT = process.env.PORT || 5000;
