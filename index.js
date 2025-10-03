@@ -15,7 +15,7 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
   : [
       "https://fitnessjasna.vercel.app", // production frontend
-      "http://localhost:5173",            // local dev
+      "http://localhost:5173",           // local dev
     ];
 
 /**
@@ -34,13 +34,11 @@ const corsOptions = {
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
-  optionsSuccessStatus: 200, // for legacy browsers
+  optionsSuccessStatus: 200,
 };
 
 // ✅ Apply CORS globally BEFORE routes
 app.use(cors(corsOptions));
-
-// ✅ Handle all preflight requests
 app.options("*", cors(corsOptions));
 
 /**
@@ -56,10 +54,10 @@ app.get("/", (req, res) => {
   res.send("Welcome to Happy Fitness API 🚀");
 });
 
-// Connect to MongoDB
+// ✅ Connect to MongoDB
 connectDB();
 
-// Use fitness routes
+// ✅ Routes
 app.use("/myfitness", fitnessroutes);
 
 /**
@@ -74,14 +72,9 @@ app.use((err, req, res, next) => {
 });
 
 /**
- * ✅ Local dev server
+ * ✅ Start server (Render requires this, no conditional)
  */
-if (process.env.NODE_ENV !== "production") {
-  const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => {
-    console.log(`🚀 Server running locally on http://localhost:${PORT}`);
-  });
-}
-
-// ✅ Export app for Vercel
-module.exports = app;
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
